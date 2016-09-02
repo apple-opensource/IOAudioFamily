@@ -2,21 +2,24 @@
  * Copyright (c) 1998-2000 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- *
- * The contents of this file constitute Original Code as defined in and
- * are subject to the Apple Public Source License Version 1.1 (the
- * "License").  You may not use this file except in compliance with the
- * License.  Please obtain a copy of the License at
- * http://www.apple.com/publicsource and read it before using this file.
- *
- * This Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
- *
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -66,6 +69,7 @@
 
 #define kIOAudioDeviceTransportTypeKey		"IOAudioDeviceTransportType"
 
+#define kIOAudioDeviceConfigurationAppKey	"IOAudioDeviceConfigurationApplication"
 
 
 /*****
@@ -105,6 +109,27 @@
 #define kIOAudioEngineGlobalUniqueIDKey				"IOAudioEngineGlobalUniqueID"
 
 #define kIOAudioEngineDescriptionKey				"IOAudioEngineDescription"
+
+/*!
+ * @defined kIOAudioEngineFullChannelNamesKey
+ * @abstract The key in the IORegistry for the IOAudioEngine's dictionary of fully constructed names for each channel keyed by the device channel
+ * @discussion 
+ */
+#define	kIOAudioEngineFullChannelNamesKey			"IOAudioEngineChannelNames"
+
+/*!
+ * @defined kIOAudioEngineFullChannelNamesKey
+ * @abstract The key in the IORegistry for the IOAudioEngine's dictionary of category names for each channel keyed by the device channel
+ * @discussion 
+ */
+#define	kIOAudioEngineFullChannelCategoryNamesKey	"IOAudioEngineChannelCategoryNames"
+
+/*!
+ * @defined kIOAudioEngineFullChannelNamesKey
+ * @abstract The key in the IORegistry for the IOAudioEngine's dictionary of number names for each channel keyed by the device channel
+ * @discussion 
+ */
+#define	kIOAudioEngineFullChannelNumberNamesKey		"IOAudioEngineChannelNumberNames"
 
 /*****
  *
@@ -217,7 +242,7 @@
  */
 #define kIOAudioControlChannelIDKey		"IOAudioControlChannelID"
 
-#define kIOAudioControlChannelNumberKey	"IOAudioControlChannelNumber"
+#define kIOAudioControlChannelNumberKey			"IOAudioControlChannelNumber"
 
 #define kIOAudioControlCoreAudioPropertyIDKey	"IOAudioControlCoreAudioPropertyID"
 /*!
@@ -285,6 +310,14 @@
  * @discussion The value returned by this key is a 32-bit integer representing the current value of the IOAudioControl.
  */
 #define kIOAudioControlValueKey				"IOAudioControlValue"
+
+/*!
+ * @defined kIOAudioControlValueIsReadOnlyKey
+ * @abstract The key in the IORegistry for the IOAudioControl value-is-read-only attribute.
+ * @discussion The value returned by this key is a 32-bit integer but the value doesn't have any direct meaning.
+ *  Instead, the presence of this key indicates that the value for the control is read-only
+ */
+#define kIOAudioControlValueIsReadOnlyKey	"IOAudioControlValueIsReadOnly"
 
 /*!
  * @defined kIOAudioLevelControlMinValueKey

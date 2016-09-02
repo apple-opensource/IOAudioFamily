@@ -2,21 +2,24 @@
  * Copyright (c) 1998-2000 Apple Computer, Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- *
- * The contents of this file constitute Original Code as defined in and
- * are subject to the Apple Public Source License Version 1.1 (the
- * "License").  You may not use this file except in compliance with the
- * License.  Please obtain a copy of the License at
- * http://www.apple.com/publicsource and read it before using this file.
- *
- * This Original Code and all software distributed under the License are
- * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * 
+ * Copyright (c) 1999-2003 Apple Computer, Inc.  All Rights Reserved.
+ * 
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the Apple Public Source License
+ * Version 2.0 (the 'License'). You may not use this file except in
+ * compliance with the License. Please obtain a copy of the License at
+ * http://www.opensource.apple.com/apsl/ and read it before using this
+ * file.
+ * 
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
  * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT.  Please see the
- * License for the specific language governing rights and limitations
- * under the License.
- *
+ * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
+ * Please see the License for the specific language governing rights and
+ * limitations under the License.
+ * 
  * @APPLE_LICENSE_HEADER_END@
  */
  
@@ -203,6 +206,13 @@ bool IOAudioEngine::init(OSDictionary *properties)
         return false;
     }
     
+	reserved = (ExpansionData *)IOMalloc (sizeof(struct ExpansionData));
+	if (!reserved) {
+		return false;
+	} else {
+		reserved->pauseCount = 0;
+	}
+
     duringStartup = true;
 
     sampleRate.whole = 0;
@@ -213,7 +223,7 @@ bool IOAudioEngine::init(OSDictionary *properties)
     
     numActiveUserClients = 0;
 
-    status = (IOAudioEngineStatus *)IOMallocAligned(round_page(sizeof(IOAudioEngineStatus)), PAGE_SIZE);
+    status = (IOAudioEngineStatus *)IOMallocAligned(round_page_32(sizeof(IOAudioEngineStatus)), PAGE_SIZE);
 
     if (!status) {
         return false;
@@ -239,7 +249,7 @@ bool IOAudioEngine::init(OSDictionary *properties)
         return false;
     }
     
-    bzero(status, round_page(sizeof(IOAudioEngineStatus)));
+    bzero(status, round_page_32(sizeof(IOAudioEngineStatus)));
     status->fVersion = kIOAudioEngineCurrentStatusStructVersion;
 
     setState(kIOAudioEngineStopped);
@@ -254,7 +264,7 @@ void IOAudioEngine::free()
 #endif
 
     if (status) {
-        IOFreeAligned(status, round_page(sizeof(IOAudioEngineStatus)));
+        IOFreeAligned(status, round_page_32(sizeof(IOAudioEngineStatus)));
         status = 0;
     }
 
@@ -293,6 +303,10 @@ void IOAudioEngine::free()
         workLoop = NULL;
     }
 
+	if (reserved) {
+		IOFree (reserved, sizeof(struct ExpansionData));
+	}
+    
     super::free();
 }
 
@@ -779,6 +793,21 @@ IOReturn IOAudioEngine::startClient(IOAudioEngineUserClient *userClient)
     IOLog("IOAudioEngine[%p]::startClient(%p)\n", this, userClient);
 #endif
 
+	while ( audioDevice->getPowerState() == kIOAudioDeviceSleep )
+	{
+		retain();
+		
+		commandGate->commandSleep( &audioDevice->currentPowerState );
+		
+		if ( isInactive() )
+		{
+			release();
+			return kIOReturnNoDevice;
+		}
+		
+		release();
+	}
+
     if (userClient) {
         result = incrementActiveUserClients();
     }
@@ -821,6 +850,10 @@ IOReturn IOAudioEngine::incrementActiveUserClients()
         result = startAudioEngine();
     }
     
+	if (result != kIOReturnSuccess) {
+		decrementActiveUserClients();
+	}
+	
     return result;
 }
 
@@ -1033,7 +1066,7 @@ void IOAudioEngine::updateChannelNumbers()
     SInt32 currentChannelNumber;
    
 #ifdef DEBUG_CALLS
-IOLog("IOAudioEngine[%p]::updateChannelNumbers() - o=%ld i=%ld\n", this, maxNumOutputChannels, maxNumInputChannels);
+	IOLog("IOAudioEngine[%p]::updateChannelNumbers() - o=%ld i=%ld\n", this, maxNumOutputChannels, maxNumInputChannels);
 #endif
 
     if (maxNumOutputChannels > 0) {
@@ -1217,6 +1250,7 @@ IOReturn IOAudioEngine::startAudioEngine()
         case kIOAudioEngineResumed:
             resetStatusBuffer();
             
+			reserved->pauseCount = 0;
             result = performAudioEngineStart();
             if (result == kIOReturnSuccess) {
                 setState(kIOAudioEngineRunning);
@@ -1267,6 +1301,7 @@ IOReturn IOAudioEngine::pauseAudioEngine()
     IOLog("IOAudioEngine[%p]::pauseAudioEngine()\n", this);
 #endif
 
+	reserved->pauseCount++;
     switch(getState()) {
         case kIOAudioEngineRunning:
         case kIOAudioEngineResumed:
@@ -1298,11 +1333,13 @@ IOReturn IOAudioEngine::resumeAudioEngine()
 #ifdef DEBUG_CALLS
     IOLog("IOAudioEngine[%p]::resumeAudioEngine()\n", this);
 #endif
-    
-    if (getState() == kIOAudioEnginePaused) {
-        setState(kIOAudioEngineResumed);
-        sendNotification(kIOAudioEngineResumedNotification);
-    }
+
+	if (--reserved->pauseCount == 0) {
+		if (getState() == kIOAudioEnginePaused) {
+			setState(kIOAudioEngineResumed);
+			sendNotification(kIOAudioEngineResumedNotification);
+		}
+	}
     
     return result;
 }
@@ -1903,7 +1940,7 @@ IOReturn IOAudioEngine::addDefaultAudioControl(IOAudioControl *defaultAudioContr
 		}
         if (defaultAudioControl->attachAndStart(this)) {
             if (!defaultAudioControls) {
-                defaultAudioControls = OSSet::withObjects(&(const OSObject *)defaultAudioControl, 1, 1);
+                defaultAudioControls = OSSet::withObjects((const OSObject **)&defaultAudioControl, 1, 1);
             } else {
                 defaultAudioControls->setObject(defaultAudioControl);
             }
